@@ -13,6 +13,7 @@ const Expense = require('../models/Expense');
 const Incident = require('../models/Incident');
 const Document = require('../models/Document');
 const AuditLog = require('../models/AuditLog');
+const Organization = require('../models/Organization');
 
 dotenv.config();
 
@@ -29,6 +30,23 @@ const seedDatabase = async () => {
         console.warn('[Seed] Drop database note:', dropErr.message);
       }
     }
+
+    // 0. Create Enterprise Organization
+    const defaultOrg = await Organization.create({
+      name: 'Sphere Global Logistics Corp',
+      code: 'SPHERE-CORP',
+      subscriptionPlan: 'Enterprise',
+      status: 'Active',
+      contactEmail: 'operations@fleetsphere.com',
+      contactPhone: '+1 (800) 555-0100',
+      address: '1000 Logistics Way, Suite 500, Dallas, TX 75201',
+      settings: {
+        currency: 'USD',
+        distanceUnit: 'km',
+        timezone: 'America/Chicago'
+      }
+    });
+    console.log(`[Seed] Created primary enterprise tenant: ${defaultOrg.name} (${defaultOrg.code})`);
 
     // 1. Create Branches
     const branches = await Branch.create([
@@ -656,6 +674,22 @@ const seedDatabase = async () => {
         details: 'Scheduled job MAINT-2024-001 for vehicle IL-SPRINT-33'
       }
     ]);
+
+    // Link all seeded records to the primary enterprise tenant
+    await Promise.all([
+      Branch.updateMany({}, { organization: defaultOrg._id }),
+      User.updateMany({}, { organization: defaultOrg._id }),
+      Vehicle.updateMany({}, { organization: defaultOrg._id }),
+      Driver.updateMany({}, { organization: defaultOrg._id }),
+      Trip.updateMany({}, { organization: defaultOrg._id }),
+      MaintenanceJob.updateMany({}, { organization: defaultOrg._id }),
+      FuelEntry.updateMany({}, { organization: defaultOrg._id }),
+      Expense.updateMany({}, { organization: defaultOrg._id }),
+      Incident.updateMany({}, { organization: defaultOrg._id }),
+      Document.updateMany({}, { organization: defaultOrg._id }),
+      AuditLog.updateMany({}, { organization: defaultOrg._id })
+    ]);
+    console.log('[Seed] Associated all entities with primary enterprise organization.');
 
     console.log('--- FleetSphere Database Seeding Completed Successfully! ---');
     return true;

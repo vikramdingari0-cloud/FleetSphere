@@ -4,6 +4,7 @@ const maintenanceJobSchema = new mongoose.Schema({
   jobNumber: { type: String, required: true, unique: true },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   type: {
     type: String,
     enum: [

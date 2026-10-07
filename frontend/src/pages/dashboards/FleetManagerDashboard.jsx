@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
+import FleetMap from '../../components/common/FleetMap';
+import { vehiclesAPI, tripsAPI } from '../../services/api';
 import {
   Truck,
   Navigation,
@@ -12,7 +14,9 @@ import {
   TrendingUp,
   Clock,
   Plus,
-  Compass
+  Compass,
+  Radio,
+  MapPin
 } from 'lucide-react';
 import {
   AreaChart,
@@ -33,6 +37,25 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
   const s = data?.summary || {};
   const charts = data?.charts || {};
   const statusDist = charts.vehicleStatusDistribution || [];
+
+  const [fleetVehicles, setFleetVehicles] = useState([]);
+  const [activeDispatches, setActiveDispatches] = useState([]);
+
+  useEffect(() => {
+    const loadMapData = async () => {
+      try {
+        const [vRes, tRes] = await Promise.all([
+          vehiclesAPI.getAll(),
+          tripsAPI.getAll({ status: 'Started' })
+        ]);
+        setFleetVehicles(vRes.data || []);
+        setActiveDispatches(tRes.data || []);
+      } catch (err) {
+        console.error('Failed to load map data in FleetManagerDashboard:', err);
+      }
+    };
+    loadMapData();
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -94,7 +117,7 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
         </div>
       )}
 
-      {/* Operational KPI Grid */}
+      {/* Actionable Operational KPI Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
         <StatCard
           icon={Truck}
@@ -104,6 +127,7 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
           trend={`${s.fleetHealthRate || 100}% Ready`}
           trendType="positive"
           color="primary"
+          onClick={() => setActiveTab('vehicles')}
         />
         <StatCard
           icon={Navigation}
@@ -113,6 +137,7 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
           trend="Real-Time Tracking"
           trendType="neutral"
           color="success"
+          onClick={() => setActiveTab('trips')}
         />
         <StatCard
           icon={Wrench}
@@ -122,6 +147,7 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
           trend={s.overdueServiceCount > 0 ? 'Service Due' : 'Healthy'}
           trendType={s.overdueServiceCount > 0 ? 'negative' : 'positive'}
           color="warning"
+          onClick={() => setActiveTab('maintenance')}
         />
         <StatCard
           icon={Fuel}
@@ -131,6 +157,19 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
           trend="Eco Benchmark"
           trendType="positive"
           color="cyan"
+          onClick={() => setActiveTab('fuel')}
+        />
+      </div>
+
+      {/* Signature Interstate Telematics Fleet Map */}
+      <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <FleetMap
+          vehicles={fleetVehicles}
+          trips={activeDispatches}
+          height={480}
+          onSelectVehicle={(veh) => {
+            // Optional callback when selecting vehicle on map
+          }}
         />
       </div>
 
@@ -178,7 +217,7 @@ const FleetManagerDashboard = ({ data, setActiveTab }) => {
         <div className="card" style={{ padding: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Operating Expenditure Breakdown</h3>
           <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginBottom: '16px' }}>
-            Fuel telemetry vs. Maintenance investment over 6 months
+            Real DB monthly aggregations: Fuel telemetry vs. Maintenance investment
           </p>
           <div style={{ height: '220px' }}>
             <ResponsiveContainer width="100%" height="100%">

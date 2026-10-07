@@ -96,7 +96,7 @@ const App = () => {
     <div className="app-container">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="main-wrapper">
-        <Navbar onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+        <Navbar onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} onNavigateTab={setActiveTab} />
         <main className="content-area">
           {renderActivePage()}
         </main>

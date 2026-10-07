@@ -4,7 +4,7 @@ let mongoServer;
 
 const connectDB = async () => {
   try {
-    let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fleetsphere';
+    let mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fleetsphere';
 
     try {
       const conn = await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 3000 });

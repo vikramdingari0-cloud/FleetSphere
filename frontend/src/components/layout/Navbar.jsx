@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, DEMO_USERS } from '../../context/AuthContext';
 import { LogOut, Building2, Search, Sun, Moon } from 'lucide-react';
+import NotificationDropdown from '../common/NotificationDropdown';
 
-const Navbar = ({ onOpenCommandPalette }) => {
+const Navbar = ({ onOpenCommandPalette, onNavigateTab }) => {
   const { user, logout, demoLogin } = useAuth();
   const [theme, setTheme] = useState(() => localStorage.getItem('fleetsphere_theme') || 'dark');
 
@@ -68,6 +69,9 @@ const Navbar = ({ onOpenCommandPalette }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Real-time Notification Center */}
+        <NotificationDropdown onNavigateTab={onNavigateTab} />
+
         {/* Theme Switcher */}
         <button
           onClick={toggleTheme}

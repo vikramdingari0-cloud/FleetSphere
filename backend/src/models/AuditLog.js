@@ -6,6 +6,7 @@ const auditLogSchema = new mongoose.Schema({
   userName: { type: String },
   userRole: { type: String },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   details: { type: String },
   ipAddress: { type: String, default: '127.0.0.1' },
   timestamp: { type: Date, default: Date.now }

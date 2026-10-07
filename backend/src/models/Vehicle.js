@@ -23,6 +23,7 @@ const vehicleSchema = new mongoose.Schema({
     enum: ['Available', 'In Transit', 'Maintenance', 'Out of Service'],
     default: 'Available'
   },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   serviceIntervalKm: { type: Number, default: 10000 },
   serviceIntervalMonths: { type: Number, default: 6 },

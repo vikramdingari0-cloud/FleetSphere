@@ -25,6 +25,7 @@ const documentSchema = new mongoose.Schema({
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
   driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   fileUrl: { type: String, required: true },
   issueDate: { type: Date },
   expiryDate: { type: Date },

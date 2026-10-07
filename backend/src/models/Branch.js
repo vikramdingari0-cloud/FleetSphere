@@ -8,6 +8,7 @@ const branchSchema = new mongoose.Schema({
   contactPhone: { type: String },
   contactEmail: { type: String },
   capacity: { type: Number, default: 50 },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

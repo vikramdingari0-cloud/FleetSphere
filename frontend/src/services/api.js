@@ -39,7 +39,9 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   getMe: () => api.get('/auth/me'),
-  getUsers: () => api.get('/auth/users')
+  getUsers: (params) => api.get('/auth/users', { params }),
+  createUser: (data) => api.post('/auth/users', data),
+  updateUser: (id, data) => api.put(`/auth/users/${id}`, data)
 };
 
 export const analyticsAPI = {
@@ -101,7 +103,27 @@ export const documentsAPI = {
 
 export const branchesAPI = {
   getAll: () => api.get('/branches'),
-  create: (data) => api.post('/branches', data)
+  create: (data) => api.post('/branches', data),
+  update: (id, data) => api.put(`/branches/${id}`, data)
+};
+
+export const organizationsAPI = {
+  getAll: () => api.get('/organizations'),
+  getById: (id) => api.get(`/organizations/${id}`),
+  create: (data) => api.post('/organizations', data),
+  update: (id, data) => api.put(`/organizations/${id}`, data)
+};
+
+export const auditLogsAPI = {
+  getAll: (params) => api.get('/audit-logs', { params })
+};
+
+export const notificationsAPI = {
+  getAll: () => api.get('/notifications')
+};
+
+export const searchAPI = {
+  query: (q) => api.get('/search', { params: { q } })
 };
 
 export default api;

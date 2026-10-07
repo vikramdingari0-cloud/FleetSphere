@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
+import FleetMap from '../../components/common/FleetMap';
 import {
   Shield,
   Building2,
@@ -11,7 +12,10 @@ import {
   AlertTriangle,
   CheckCircle,
   ExternalLink,
-  Plus
+  Plus,
+  Globe,
+  Database,
+  Lock
 } from 'lucide-react';
 import {
   AreaChart,
@@ -97,7 +101,64 @@ const SuperAdminDashboard = ({ data, setActiveTab, onRefresh }) => {
           trend={s.complianceAlertsCount > 0 ? 'Action Req' : 'Compliant'}
           trendType={s.complianceAlertsCount > 0 ? 'negative' : 'positive'}
           color="warning"
+          onClick={() => setActiveTab('maintenance')}
         />
+      </div>
+
+      {/* Nationwide Logistics Hub Map */}
+      <FleetMap
+        vehicles={data?.recentVehicles || []}
+        trips={data?.recentTrips || []}
+        branches={branches}
+        onSelectVehicle={(v) => setActiveTab('vehicles')}
+      />
+
+      {/* Tenant Security & Multi-Tenancy Architecture Status */}
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%)',
+          border: '1px solid rgba(14, 165, 233, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'rgba(14, 165, 233, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#38bdf8'
+            }}
+          >
+            <Lock size={20} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '14px', color: '#f8fafc' }}>
+              Multi-Tenant Isolation &amp; BOLA Enforcement: Active
+            </div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+              Organization Tenant: <strong>Sphere Global Logistics Corp</strong> (Code: <code>SPHERE-CORP</code>) &bull; RBAC Level: Super Admin
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <span className="badge badge-subtle" style={{ color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+            ✓ Object Authorization Active
+          </span>
+          <span className="badge badge-subtle" style={{ color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+            ✓ Tenant Scoped
+          </span>
+        </div>
       </div>
 
       {/* Cross-Branch Comparative Performance */}

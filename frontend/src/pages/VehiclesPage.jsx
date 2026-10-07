@@ -3,6 +3,8 @@ import { vehiclesAPI, branchesAPI } from '../services/api';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
 import DetailDrawer from '../components/common/DetailDrawer';
+import Pagination from '../components/common/Pagination';
+import { exportToCSV } from '../utils/csvExport';
 import { useAuth } from '../context/AuthContext';
 import {
   Truck,
@@ -15,7 +17,8 @@ import {
   BatteryCharging,
   Fuel,
   Gauge,
-  Eye
+  Eye,
+  Download
 } from 'lucide-react';
 
 const VehiclesPage = () => {
@@ -101,10 +104,33 @@ const VehiclesPage = () => {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const handleExportCSV = () => {
+    const headers = [
+      { label: 'Plate Number', accessor: 'plateNumber' },
+      { label: 'Make', accessor: 'make' },
+      { label: 'Model', accessor: 'model' },
+      { label: 'Year', accessor: 'year' },
+      { label: 'VIN', accessor: 'vin' },
+      { label: 'Type', accessor: 'type' },
+      { label: 'Fuel Type', accessor: 'fuelType' },
+      { label: 'Fuel Capacity', accessor: 'fuelCapacity' },
+      { label: 'Odometer (km)', accessor: 'currentOdometer' },
+      { label: 'Status', accessor: 'status' },
+      { label: 'Branch', accessor: (v) => v.branch?.name || '' }
+    ];
+    exportToCSV('fleetsphere_vehicles', headers, filteredVehicles);
+  };
+
   const filteredVehicles = vehicles.filter((v) => {
     if (statusFilter !== 'ALL' && v.status !== statusFilter) return false;
     return true;
   });
+
+  const totalPages = Math.ceil(filteredVehicles.length / pageSize) || 1;
+  const paginatedVehicles = filteredVehicles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -117,11 +143,20 @@ const VehiclesPage = () => {
           </p>
         </div>
 
-        {['Super Admin', 'Fleet Manager', 'Branch Manager'].includes(user?.role) && (
-          <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary">
-            <Plus size={16} /> Add Vehicle Asset
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleExportCSV}
+            className="btn btn-secondary"
+            title="Export vehicle assets to CSV"
+          >
+            <Download size={15} /> Export CSV
           </button>
-        )}
+          {['Super Admin', 'Fleet Manager', 'Branch Manager'].includes(user?.role) && (
+            <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary">
+              <Plus size={16} /> Add Vehicle Asset
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}
@@ -130,7 +165,10 @@ const VehiclesPage = () => {
           {['ALL', 'Available', 'In Transit', 'Maintenance', 'Out of Service'].map((st) => (
             <button
               key={st}
-              onClick={() => setStatusFilter(st)}
+              onClick={() => {
+                setStatusFilter(st);
+                setCurrentPage(1);
+              }}
               className={`filter-tab ${statusFilter === st ? 'active' : ''}`}
             >
               {st}
@@ -143,7 +181,10 @@ const VehiclesPage = () => {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Search VIN, plate, make..."
             className="form-input"
             style={{ paddingLeft: '38px', height: '38px' }}
@@ -174,7 +215,7 @@ const VehiclesPage = () => {
                   </td>
                 </tr>
               ) : (
-                filteredVehicles.map((v) => (
+                paginatedVehicles.map((v) => (
                   <tr key={v._id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -316,6 +357,17 @@ const VehiclesPage = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredVehicles.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* Add Vehicle Modal */}

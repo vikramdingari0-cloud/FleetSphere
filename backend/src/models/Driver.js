@@ -14,6 +14,7 @@ const driverSchema = new mongoose.Schema({
     default: 'Available'
   },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   assignedVehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
   totalTripsCompleted: { type: Number, default: 0 },
   totalDistanceDrivenKm: { type: Number, default: 0 }

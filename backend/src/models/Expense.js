@@ -20,6 +20,7 @@ const expenseSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   date: { type: Date, required: true, default: Date.now },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
   trip: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip' },
   driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },

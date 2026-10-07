@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
 const seedDatabase = require('./seed/seed');
@@ -11,7 +13,37 @@ dotenv.config();
 const path = require('path');
 const fs = require('fs');
 
+// Validate required environment variables
+const requiredEnvVars = ['JWT_SECRET'];
+const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingVars.length > 0) {
+  console.error(`[FATAL] Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error('[FATAL] Create a .env file based on .env.example');
+  process.exit(1);
+}
+
 const app = express();
+
+// Security headers
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+// Rate limiting - general API
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests, please try again later' } }
+});
+app.use('/api', apiLimiter);
+
+// Stricter rate limit on auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, error: { code: 'AUTH_RATE_LIMIT', message: 'Too many login attempts, please try again in 15 minutes' } }
+});
+app.use('/api/auth/login', authLimiter);
 
 // Configure CORS
 const allowedOrigins = process.env.CLIENT_URL 
@@ -43,6 +75,10 @@ const incidentRoutes = require('./routes/incidentRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const branchRoutes = require('./routes/branchRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const organizationRoutes = require('./routes/organizationRoutes');
+const auditLogRoutes = require('./routes/auditLogRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 // Mount routes
 app.use('/api/auth', authRoutes);
@@ -56,6 +92,10 @@ app.use('/api/incidents', incidentRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/organizations', organizationRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/search', searchRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -81,21 +121,29 @@ if (fs.existsSync(frontendDist)) {
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
-  res.status(404).json({ message: `API route ${req.originalUrl} not found` });
+  res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: `API route ${req.originalUrl} not found` } });
 });
 
 // Fallback 404
 app.use((req, res) => {
-  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+  res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: `Route ${req.originalUrl} not found` } });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('[Unhandled Error]', err.stack);
-  res.status(500).json({
-    message: process.env.NODE_ENV === 'production' && !err.isOperational
-      ? 'Internal Server Error' 
-      : (err.message || 'Internal Server Error')
+  const statusCode = err.statusCode || 500;
+  console.error(`[Error ${statusCode}] ${req.method} ${req.originalUrl}:`, err.message);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err.stack);
+  }
+  res.status(statusCode).json({
+    success: false,
+    error: {
+      code: err.code || 'INTERNAL_ERROR',
+      message: process.env.NODE_ENV === 'production' && statusCode === 500
+        ? 'Internal Server Error'
+        : (err.message || 'Internal Server Error')
+    }
   });
 });
 

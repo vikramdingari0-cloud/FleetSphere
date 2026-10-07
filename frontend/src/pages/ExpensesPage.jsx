@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { expensesAPI, vehiclesAPI, driversAPI, branchesAPI } from '../services/api';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
+import Pagination from '../components/common/Pagination';
+import { exportToCSV } from '../utils/csvExport';
 import { useAuth } from '../context/AuthContext';
 import {
   DollarSign,
@@ -12,7 +14,8 @@ import {
   FileText,
   Clock,
   Truck,
-  UserCheck
+  UserCheck,
+  Download
 } from 'lucide-react';
 
 const ExpensesPage = () => {
@@ -97,10 +100,29 @@ const ExpensesPage = () => {
 
   const canApprove = ['Super Admin', 'Fleet Manager', 'Finance Officer', 'Branch Manager'].includes(user?.role);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const handleExportCSV = () => {
+    const headers = [
+      { label: 'Title', accessor: 'title' },
+      { label: 'Category', accessor: 'category' },
+      { label: 'Amount ($)', accessor: 'amount' },
+      { label: 'Vehicle Plate', accessor: (e) => e.vehicle?.plateNumber || '' },
+      { label: 'Driver', accessor: (e) => e.driver?.user?.name || '' },
+      { label: 'Date', accessor: (e) => new Date(e.date).toLocaleDateString() },
+      { label: 'Status', accessor: 'status' }
+    ];
+    exportToCSV('fleetsphere_expenses', headers, filteredExpenses);
+  };
+
   const filteredExpenses = expenses.filter((e) => {
     if (statusFilter !== 'ALL' && e.status !== statusFilter) return false;
     return true;
   });
+
+  const totalPages = Math.ceil(filteredExpenses.length / pageSize) || 1;
+  const paginatedExpenses = filteredExpenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const totalSpend = expenses
     .filter((e) => e.status === 'Approved')
@@ -121,9 +143,18 @@ const ExpensesPage = () => {
           </p>
         </div>
 
-        <button onClick={() => setIsSubmitModalOpen(true)} className="btn btn-primary">
-          <Plus size={16} /> Submit Expense Claim
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleExportCSV}
+            className="btn btn-secondary"
+            title="Export expenses to CSV"
+          >
+            <Download size={15} /> Export CSV
+          </button>
+          <button onClick={() => setIsSubmitModalOpen(true)} className="btn btn-primary">
+            <Plus size={16} /> Submit Expense Claim
+          </button>
+        </div>
       </div>
 
       {/* Summary KPI Badges */}
@@ -152,7 +183,10 @@ const ExpensesPage = () => {
         {['ALL', 'Pending', 'Approved', 'Rejected'].map((st) => (
           <button
             key={st}
-            onClick={() => setStatusFilter(st)}
+            onClick={() => {
+              setStatusFilter(st);
+              setCurrentPage(1);
+            }}
             className={`filter-tab ${statusFilter === st ? 'active' : ''}`}
           >
             {st}
@@ -182,7 +216,7 @@ const ExpensesPage = () => {
                   </td>
                 </tr>
               ) : (
-                filteredExpenses.map((exp) => (
+                paginatedExpenses.map((exp) => (
                   <tr key={exp._id}>
                     <td>
                       <div>
@@ -273,6 +307,17 @@ const ExpensesPage = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredExpenses.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* Submit Expense Modal */}

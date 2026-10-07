@@ -5,6 +5,7 @@ const fuelEntrySchema = new mongoose.Schema({
   driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', required: true },
   trip: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip' },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   date: { type: Date, required: true, default: Date.now },
   odometerReading: { type: Number, required: true },
   fuelVolumeLiters: { type: Number, required: true },

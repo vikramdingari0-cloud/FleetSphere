@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { tripsAPI, vehiclesAPI, driversAPI, branchesAPI } from '../services/api';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
+import FleetMap from '../components/common/FleetMap';
+import Pagination from '../components/common/Pagination';
+import { exportToCSV } from '../utils/csvExport';
 import { useAuth } from '../context/AuthContext';
 import {
   Navigation,
@@ -15,7 +18,9 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle,
-  FileText
+  FileText,
+  Download,
+  Map
 } from 'lucide-react';
 
 const TripsPage = () => {
@@ -123,10 +128,34 @@ const TripsPage = () => {
     }
   };
 
+  const [showMap, setShowMap] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const handleExportCSV = () => {
+    const headers = [
+      { label: 'Trip Number', accessor: 'tripNumber' },
+      { label: 'Origin', accessor: 'origin' },
+      { label: 'Destination', accessor: 'destination' },
+      { label: 'Est Distance (km)', accessor: 'estimatedDistanceKm' },
+      { label: 'Actual Distance (km)', accessor: (t) => t.actualDistanceKm || '' },
+      { label: 'Vehicle Plate', accessor: (t) => t.vehicle?.plateNumber || '' },
+      { label: 'Driver', accessor: (t) => t.driver?.user?.name || '' },
+      { label: 'Cargo Details', accessor: 'cargoDetails' },
+      { label: 'Departure Time', accessor: 'plannedDepartureTime' },
+      { label: 'Arrival Time', accessor: 'plannedArrivalTime' },
+      { label: 'Status', accessor: 'status' }
+    ];
+    exportToCSV('fleetsphere_dispatches', headers, filteredTrips);
+  };
+
   const filteredTrips = trips.filter((t) => {
     if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
     return true;
   });
+
+  const totalPages = Math.ceil(filteredTrips.length / pageSize) || 1;
+  const paginatedTrips = filteredTrips.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -139,12 +168,40 @@ const TripsPage = () => {
           </p>
         </div>
 
-        {['Super Admin', 'Fleet Manager', 'Branch Manager'].includes(user?.role) && (
-          <button onClick={() => setIsDispatchModalOpen(true)} className="btn btn-primary">
-            <Plus size={16} /> Schedule New Dispatch
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setShowMap(!showMap)}
+            className="btn btn-secondary"
+            title="Toggle corridor telemetry map"
+          >
+            <Map size={15} /> {showMap ? 'Hide Map' : 'Show Map'}
           </button>
-        )}
+          <button
+            onClick={handleExportCSV}
+            className="btn btn-secondary"
+            title="Export filtered dispatches to CSV"
+          >
+            <Download size={15} /> Export CSV
+          </button>
+          {['Super Admin', 'Fleet Manager', 'Branch Manager'].includes(user?.role) && (
+            <button onClick={() => setIsDispatchModalOpen(true)} className="btn btn-primary">
+              <Plus size={16} /> Schedule New Dispatch
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Interactive Fleet Telemetry & Transit Corridor Map */}
+      {showMap && (
+        <FleetMap
+          vehicles={vehicles}
+          trips={trips}
+          branches={branches}
+          onSelectVehicle={(veh) => {
+            showToast(`Selected Asset ${veh.plateNumber}: In Transit (${veh.branch?.name || 'Hub'})`);
+          }}
+        />
+      )}
 
       {/* Filter Tabs & Search */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -152,7 +209,10 @@ const TripsPage = () => {
           {['ALL', 'Started', 'Assigned', 'Planned', 'Delayed', 'Completed', 'Cancelled'].map((st) => (
             <button
               key={st}
-              onClick={() => setStatusFilter(st)}
+              onClick={() => {
+                setStatusFilter(st);
+                setCurrentPage(1);
+              }}
               className={`filter-tab ${statusFilter === st ? 'active' : ''}`}
             >
               {st}
@@ -165,7 +225,10 @@ const TripsPage = () => {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Search trip ID, origin, cargo..."
             className="form-input"
             style={{ paddingLeft: '38px', height: '38px' }}
@@ -195,7 +258,7 @@ const TripsPage = () => {
                   </td>
                 </tr>
               ) : (
-                filteredTrips.map((t) => (
+                paginatedTrips.map((t) => (
                   <tr key={t._id}>
                     <td>
                       <div>
@@ -278,6 +341,17 @@ const TripsPage = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredTrips.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* Schedule Dispatch Modal */}

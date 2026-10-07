@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   phone: { type: String },
   avatar: { type: String },
   isActive: { type: Boolean, default: true },

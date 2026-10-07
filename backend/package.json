@@ -5,13 +5,17 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node src/seed/seed.js"
+    "seed": "node src/seed/seed.js",
+    "test": "node --test src/tests/api.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb-memory-server": "^10.0.0",
     "mongoose": "^8.5.1",

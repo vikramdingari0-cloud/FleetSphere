@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import StatusBadge from '../../components/common/StatusBadge';
+import Modal from '../../components/common/Modal';
 import { tripsAPI } from '../../services/api';
 import {
   Navigation,
@@ -14,7 +15,10 @@ import {
   MapPin,
   Calendar,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Gauge,
+  CheckCircle2,
+  FileEdit
 } from 'lucide-react';
 
 const DriverDashboard = ({ data, user, setActiveTab, onRefresh, showToast }) => {
@@ -23,23 +27,67 @@ const DriverDashboard = ({ data, user, setActiveTab, onRefresh, showToast }) => 
   const upcomingTrips = driverData.upcomingTrips || [];
   const [actionLoading, setActionLoading] = useState(false);
 
-  const handleUpdateTripStatus = async (tripId, newStatus) => {
+  // Complete Journey Modal state
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [endOdometerInput, setEndOdometerInput] = useState('');
+  const [completionNotes, setCompletionNotes] = useState('');
+
+  const handleStartTrip = async (tripId) => {
     try {
       setActionLoading(true);
-      await tripsAPI.updateStatus(tripId, { status: newStatus });
-      showToast && showToast(`Trip status successfully updated to ${newStatus}`);
+      await tripsAPI.updateStatus(tripId, { status: 'Started' });
+      showToast && showToast('Journey commenced! Drive safely and maintain speed limits.');
       onRefresh && onRefresh();
     } catch (err) {
-      showToast && showToast(err.response?.data?.message || 'Failed to update trip status', 'error');
+      showToast && showToast(err.response?.data?.message || 'Failed to start trip', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
+  const openCompleteModal = () => {
+    if (!currentTrip) return;
+    const estimatedEnd = (currentTrip.startOdometer || 0) + (currentTrip.estimatedDistanceKm || 100);
+    setEndOdometerInput(String(estimatedEnd));
+    setCompletionNotes('');
+    setIsCompleteModalOpen(true);
+  };
+
+  const handleConfirmCompletion = async (e) => {
+    e.preventDefault();
+    if (!currentTrip) return;
+
+    const numEndOdo = Number(endOdometerInput);
+    if (isNaN(numEndOdo) || numEndOdo < (currentTrip.startOdometer || 0)) {
+      showToast && showToast(`End odometer cannot be lower than start odometer (${currentTrip.startOdometer || 0} km)`, 'error');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await tripsAPI.updateStatus(currentTrip._id, {
+        status: 'Completed',
+        endOdometer: numEndOdo,
+        notes: completionNotes || 'Trip successfully completed and vehicle inspected by driver.'
+      });
+      showToast && showToast(`Trip ${currentTrip.tripNumber} completed! Logged ${numEndOdo - currentTrip.startOdometer} km.`);
+      setIsCompleteModalOpen(false);
+      onRefresh && onRefresh();
+    } catch (err) {
+      showToast && showToast(err.response?.data?.message || 'Failed to complete trip', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const startOdo = currentTrip?.startOdometer || 0;
+  const currentDiff = Number(endOdometerInput) - startOdo;
+  const isValidOdo = !isNaN(Number(endOdometerInput)) && Number(endOdometerInput) >= startOdo;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Driver Welcome Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <span className="role-badge driver">
             Driver Operations Portal
@@ -95,7 +143,7 @@ const DriverDashboard = ({ data, user, setActiveTab, onRefresh, showToast }) => 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-dim)' }}>
-                  <MapPin size={13} color="#10b981" /> Origin
+                  <MapPin size={13} color="#10b981" /> Origin Hub
                 </div>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff', marginTop: '4px' }}>
                   {currentTrip.origin}
@@ -112,18 +160,36 @@ const DriverDashboard = ({ data, user, setActiveTab, onRefresh, showToast }) => 
               </div>
             </div>
 
-            {currentTrip.cargoDetails && (
-              <div style={{ marginTop: '12px', fontSize: '12.5px', color: 'var(--text-muted)' }}>
-                Cargo: <strong style={{ color: '#fff' }}>{currentTrip.cargoDetails}</strong> ({currentTrip.cargoWeightKg || 0} kg)
+            {/* Trip Metas */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginTop: '12px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Start Odometer:</span>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
+                  {(currentTrip.startOdometer || 0).toLocaleString()} km
+                </div>
               </div>
-            )}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Est. Distance:</span>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8' }}>
+                  {currentTrip.estimatedDistanceKm} km
+                </div>
+              </div>
+              {currentTrip.cargoDetails && (
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Cargo Weight:</span>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
+                    {currentTrip.cargoWeightKg || 0} kg
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Touch Action Buttons for Current Trip */}
             <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
               {currentTrip.status === 'Assigned' && (
                 <button
                   disabled={actionLoading}
-                  onClick={() => handleUpdateTripStatus(currentTrip._id, 'Started')}
+                  onClick={() => handleStartTrip(currentTrip._id)}
                   className="btn btn-primary"
                   style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 700 }}
                 >
@@ -134,18 +200,18 @@ const DriverDashboard = ({ data, user, setActiveTab, onRefresh, showToast }) => 
               {currentTrip.status === 'Started' && (
                 <button
                   disabled={actionLoading}
-                  onClick={() => handleUpdateTripStatus(currentTrip._id, 'Completed')}
+                  onClick={openCompleteModal}
                   className="btn"
                   style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 700, backgroundColor: '#10b981', color: '#fff' }}
                 >
-                  <CheckCircle size={16} /> Complete Journey
+                  <CheckCircle size={16} /> Complete Journey &amp; Handover
                 </button>
               )}
 
               {currentTrip.status === 'Delayed' && (
                 <button
                   disabled={actionLoading}
-                  onClick={() => handleUpdateTripStatus(currentTrip._id, 'Started')}
+                  onClick={() => handleStartTrip(currentTrip._id)}
                   className="btn btn-primary"
                   style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 700 }}
                 >
@@ -236,6 +302,80 @@ const DriverDashboard = ({ data, user, setActiveTab, onRefresh, showToast }) => 
           </div>
         )}
       </div>
+
+      {/* End Journey Handover Modal with Strict Odometer Validation */}
+      <Modal
+        isOpen={isCompleteModalOpen}
+        onClose={() => setIsCompleteModalOpen(false)}
+        title={`Complete Dispatch Handover: ${currentTrip?.tripNumber}`}
+      >
+        <form onSubmit={handleConfirmCompletion} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ background: 'rgba(14, 165, 233, 0.08)', border: '1px solid rgba(14, 165, 233, 0.2)', padding: '12px', borderRadius: '8px', fontSize: '12.5px' }}>
+            <div style={{ color: 'var(--text-muted)' }}>
+              Vehicle: <strong style={{ color: '#fff' }}>{currentTrip?.vehicle?.plateNumber}</strong>
+            </div>
+            <div style={{ color: 'var(--text-muted)', marginTop: '4px' }}>
+              Route Departure Odometer: <strong style={{ color: '#38bdf8' }}>{startOdo.toLocaleString()} km</strong>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Final Vehicle Odometer Reading (km) *</label>
+            <div style={{ position: 'relative' }}>
+              <Gauge size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-dim)' }} />
+              <input
+                type="number"
+                required
+                className="form-input"
+                style={{ paddingLeft: '38px' }}
+                value={endOdometerInput}
+                onChange={(e) => setEndOdometerInput(e.target.value)}
+                min={startOdo}
+                placeholder={`Must be >= ${startOdo}`}
+              />
+            </div>
+            {!isValidOdo && (
+              <span style={{ fontSize: '11.5px', color: '#ef4444', marginTop: '4px', display: 'block' }}>
+                End odometer cannot be lower than departure odometer ({startOdo.toLocaleString()} km).
+              </span>
+            )}
+            {isValidOdo && currentDiff >= 0 && (
+              <span style={{ fontSize: '11.5px', color: '#10b981', marginTop: '4px', display: 'block' }}>
+                Distance Logged: +{currentDiff.toLocaleString()} km
+              </span>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Trip Notes &amp; Handover Condition</label>
+            <textarea
+              className="form-textarea"
+              rows={3}
+              placeholder="Fuel station stop, road condition, payload delivery note..."
+              value={completionNotes}
+              onChange={(e) => setCompletionNotes(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setIsCompleteModalOpen(false)}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={actionLoading || !isValidOdo}
+              className="btn"
+              style={{ backgroundColor: '#10b981', color: '#fff', fontWeight: 700 }}
+            >
+              {actionLoading ? 'Finalizing...' : 'Confirm Journey Completion'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
